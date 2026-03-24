@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest frontend --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(mkdir -p \"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/backend/routers\")",
+      "Bash(mkdir -p \"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/backend/services\")",
+      "Bash(touch \"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/backend/routers/__init__.py\")",
+      "Bash(touch \"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/backend/services/__init__.py\")",
+      "Bash(touch \"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/backend/__init__.py\")",
+      "Bash(npx tsc:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"from routers import search, ai, listing; print\\(''imports OK''\\)\")",
+      "Bash(python -m pip show fastapi)",
+      "Bash(python -c \"import fastapi; print\\(''''fastapi OK''''\\)\")",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where pip:*)",
+      "Bash(C:/Users/ttvwalnutsenpai/AppData/Local/Programs/Python/Python313/python.exe -c \"import fastapi; print\\(''fastapi OK''\\)\")",
+      "Bash(C:/Users/ttvwalnutsenpai/AppData/Local/Programs/Python/Python313/python.exe -c \"from routers import search, ai, listing; print\\(''imports OK''\\)\")",
+      "Bash(curl -v \"http://localhost:8000/api/auth/ebay\")",
+      "Bash(\"c:/Users/ttvwalnutsenpai/Desktop/_personal projects/pintraderAI/frontend/.env.local\")"
+    ]
+  }
+}
