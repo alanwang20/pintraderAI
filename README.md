@@ -36,11 +36,10 @@ This reduces the typical **2–3 minute manual search process to a few seconds.*
 ## Example Workflow
 
 1. User uploads a photo of a trading pin
-2. Backend converts the image to Base64
-3. Application sends image to the eBay image search API
-4. eBay returns similar listings
-5. The system calculates a price estimate
-6. Results are displayed to the user
+2. Application sends image to the eBay image search API
+3. eBay returns similar listings
+4. The system calculates a price estimate
+5. Results are displayed to the user
 
 ---
 
