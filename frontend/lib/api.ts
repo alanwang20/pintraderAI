@@ -28,6 +28,8 @@ export interface SearchResult {
   listings: Listing[];
   estimatedPrice: number | null;
   currency: string;
+  searchKeyword: string;
+  soldListings: SoldListing[];
 }
 
 export interface SoldResult {

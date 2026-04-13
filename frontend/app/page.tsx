@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ImageUpload from "@/components/ImageUpload";
-import { searchByImage, getSoldListings, getAuthStatus, getEbayAuthUrl } from "@/lib/api";
+import { searchByImage, getAuthStatus, getEbayAuthUrl } from "@/lib/api";
 
 export default function HomePage() {
   const router = useRouter();
@@ -37,18 +37,13 @@ export default function HomePage() {
     try {
       const searchResult = await searchByImage(selectedFile);
 
-      // Use the top listing title as the sold-listings keyword
-      const topTitle = searchResult.listings[0]?.title ?? "";
-      const soldResult = topTitle
-        ? await getSoldListings(topTitle)
-        : { soldListings: [] };
-
       sessionStorage.setItem(
         "pinResults",
         JSON.stringify({
           listings: searchResult.listings,
           estimatedPrice: searchResult.estimatedPrice,
-          soldListings: soldResult.soldListings,
+          soldListings: searchResult.soldListings,
+          searchKeyword: searchResult.searchKeyword,
         })
       );
 

@@ -32,6 +32,51 @@ async def get_app_token() -> str:
         return resp.json()["access_token"]
 
 
+def _simplify_items(items: list, limit: int) -> list[dict]:
+    results = []
+    for item in items[:limit]:
+        price_val = item.get("price", {})
+        results.append(
+            {
+                "itemId": item.get("itemId", ""),
+                "title": item.get("title", ""),
+                "price": price_val.get("value", "0.00"),
+                "currency": price_val.get("currency", "USD"),
+                "condition": item.get("condition", ""),
+                "imageUrl": item.get("image", {}).get("imageUrl", ""),
+                "itemWebUrl": item.get("itemWebUrl", ""),
+            }
+        )
+    return results
+
+
+async def search_sold_by_image(image_bytes: bytes, limit: int = 5) -> list[dict]:
+    """
+    Call Browse API searchByImage filtered to items sold in the last 90 days.
+    Returns simplified sold listing objects.
+    """
+    from datetime import datetime, timedelta, timezone
+    token = await get_app_token()
+    image_b64 = base64.b64encode(image_bytes).decode()
+    since = (datetime.now(timezone.utc) - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{PROD_BASE}/buy/browse/v1/item_summary/search_by_image",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+            },
+            json={"image": image_b64},
+            params={"limit": limit, "filter": f"lastSoldDate:[{since}..]"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    return _simplify_items(data.get("itemSummaries", []), limit)
+
+
 async def search_by_image(image_bytes: bytes, limit: int = 5) -> list[dict]:
     """
     Call Browse API searchByImage and return simplified listing objects.
@@ -53,19 +98,4 @@ async def search_by_image(image_bytes: bytes, limit: int = 5) -> list[dict]:
         resp.raise_for_status()
         data = resp.json()
 
-    items = data.get("itemSummaries", [])
-    results = []
-    for item in items[:limit]:
-        price_val = item.get("price", {})
-        results.append(
-            {
-                "itemId": item.get("itemId", ""),
-                "title": item.get("title", ""),
-                "price": price_val.get("value", "0.00"),
-                "currency": price_val.get("currency", "USD"),
-                "condition": item.get("condition", ""),
-                "imageUrl": item.get("image", {}).get("imageUrl", ""),
-                "itemWebUrl": item.get("itemWebUrl", ""),
-            }
-        )
-    return results
+    return _simplify_items(data.get("itemSummaries", []), limit)
