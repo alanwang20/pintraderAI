@@ -16,6 +16,58 @@ def _get_client() -> anthropic.AsyncAnthropic:
     return _client
 
 
+def _detect_media_type(image_bytes: bytes) -> str:
+    if image_bytes[:4] == b'\x89PNG':
+        return "image/png"
+    if image_bytes[:4] == b'RIFF' and image_bytes[8:12] == b'WEBP':
+        return "image/webp"
+    if image_bytes[:6] in (b'GIF87a', b'GIF89a'):
+        return "image/gif"
+    return "image/jpeg"
+
+
+async def generate_pin_search_keyword(image_bytes: bytes) -> str:
+    """
+    Look at a pin image and return a concise eBay search query (5-10 words).
+    Always assumes the subject is an Olympic trading pin.
+    """
+    image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
+    media_type = _detect_media_type(image_bytes)
+    prompt = (
+        "This is an Olympic trading pin. Generate a concise eBay search query (5-10 words) "
+        "that would find this exact pin on eBay.\n\n"
+        "Identify what type of pin it is and extract the most searchable details:\n"
+        "- SPORT PICTOGRAM: name the sport exactly as it appears (e.g. figure skating, alpine skiing, swimming)\n"
+        "- COUNTRY/NOC: include the country or NOC name (e.g. Team USA, Canada, Great Britain, France)\n"
+        "- MASCOT: include the mascot name if readable (e.g. Miga, Sumi, Wenlock, Miraitowa)\n"
+        "- LOGO/EMBLEM: describe the emblem (e.g. Olympic rings, torch, flame, wreath)\n"
+        "- DESIGN SHAPE: describe what the pin looks like physically (e.g. jacket, helmet, snowflake, flag, medal)\n"
+        "- GAMES: if a city, year, or 2-digit number is visible, include the full year (26=2026, 24=2024, 22=2022) and city if legible\n"
+        "- SPONSOR/BRAND: include sponsor name if prominently shown\n\n"
+        "Always include 'Olympic pin' in the query. Only include details clearly visible — do not guess.\n"
+        "Output ONLY the search query, nothing else."
+    )
+
+    client = _get_client()
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=40,
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    )
+    return message.content[0].text.strip()
+
+
 async def extract_search_keyword(listing_titles: list[str]) -> str:
     """
     Given a list of eBay listing titles for the same pin, return a concise

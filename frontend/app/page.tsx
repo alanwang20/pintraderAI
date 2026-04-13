@@ -38,12 +38,10 @@ export default function HomePage() {
       const searchResult = await searchByImage(selectedFile);
 
       sessionStorage.setItem(
-        "pinResults",
+        "activeListings",
         JSON.stringify({
           listings: searchResult.listings,
           estimatedPrice: searchResult.estimatedPrice,
-          soldListings: searchResult.soldListings,
-          searchKeyword: searchResult.searchKeyword,
         })
       );
 
@@ -51,7 +49,7 @@ export default function HomePage() {
       const reader = new FileReader();
       reader.onload = () => {
         sessionStorage.setItem("pinImageDataUrl", reader.result as string);
-        router.push("/results");
+        router.push("/select");
       };
       reader.readAsDataURL(selectedFile);
     } catch (err: unknown) {

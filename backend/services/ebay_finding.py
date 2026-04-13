@@ -1,104 +1,69 @@
 """
-eBay Marketplace Insights API — item_sales/search
-Returns actually-sold items by keyword with lastSoldDate filter.
+eBay Finding API — findCompletedItems
+Returns actually-sold/completed listings by keyword.
+Uses the legacy XML Finding API which works with any App ID, no special scope needed.
 """
 import os
+import urllib.parse
 import httpx
-from datetime import datetime, timedelta, timezone
+import xml.etree.ElementTree as ET
 
-from services.ebay_browse import get_app_token
-
-INSIGHTS_PROD = "https://api.ebay.com/buy/marketplace_insights/v1_beta/item_sales/search"
-INSIGHTS_SCOPE = "https://api.ebay.com/oauth/api_scope/buy.marketplace.insights"
-
-
-async def get_insights_token() -> str:
-    """Fetch app token with marketplace insights scope."""
-    import base64
-    app_id = os.getenv("EBAY_PROD_APP_ID") or os.getenv("EBAY_APP_ID", "")
-    cert_id = os.getenv("EBAY_PROD_CERT_ID") or os.getenv("EBAY_CERT_ID", "")
-    credentials = base64.b64encode(f"{app_id}:{cert_id}".encode()).decode()
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://api.ebay.com/identity/v1/oauth2/token",
-            headers={
-                "Authorization": f"Basic {credentials}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            data={
-                "grant_type": "client_credentials",
-                "scope": f"https://api.ebay.com/oauth/api_scope {INSIGHTS_SCOPE}",
-            },
-        )
-        resp.raise_for_status()
-        return resp.json()["access_token"]
+FINDING_ENDPOINT = "https://svcs.ebay.com/services/search/FindingService/v1"
+NS = "http://www.ebay.com/marketplace/search/v1/services"
+PIN_CATEGORY_ID = "13544"
 
 
 async def find_completed_items(query: str, limit: int = 5) -> list[dict]:
     """
-    Search Marketplace Insights for recently sold items matching the keyword.
-    Falls back to Browse API keyword search if insights scope is unavailable.
+    Call Finding API findCompletedItems and return sold listings.
+    Only returns items where the sale actually completed (soldItemsOnly=true).
+    Query string is built manually to preserve literal parentheses in filter names,
+    which httpx would otherwise percent-encode, breaking the Finding API.
     """
-    try:
-        token = await get_insights_token()
-    except Exception:
-        token = await get_app_token()
+    app_id = os.getenv("EBAY_PROD_APP_ID") or os.getenv("EBAY_APP_ID", "")
 
-    # Last 90 days
-    now = datetime.now(timezone.utc)
-    since = (now - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Build query string manually — eBay Finding API requires literal parentheses
+    # in itemFilter(N).name / itemFilter(N).value; httpx would encode them as %28/%29
+    parts = [
+        ("OPERATION-NAME", "findCompletedItems"),
+        ("SERVICE-VERSION", "1.0.0"),
+        ("SECURITY-APPNAME", app_id),
+        ("RESPONSE-DATA-FORMAT", "XML"),
+        ("keywords", query),
+        ("categoryId", PIN_CATEGORY_ID),
+        ("itemFilter(0).name", "SoldItemsOnly"),
+        ("itemFilter(0).value", "true"),
+        ("paginationInput.entriesPerPage", str(limit)),
+        ("outputSelector(0)", "PictureURLLarge"),
+    ]
+    qs = "&".join(f"{k}={urllib.parse.quote(str(v), safe='()')}" for k, v in parts)
+    url = f"{FINDING_ENDPOINT}?{qs}"
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            INSIGHTS_PROD,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
-            },
-            params={
-                "q": query,
-                "limit": limit,
-                "filter": f"lastSoldDate:[{since}..]",
-            },
-        )
-
-        if resp.status_code == 403:
-            # Scope not approved — fall back to Browse search
-            from services.ebay_browse import get_app_token as browse_token
-            token2 = await browse_token()
-            resp = await client.get(
-                "https://api.ebay.com/buy/browse/v1/item_summary/search",
-                headers={"Authorization": f"Bearer {token2}", "X-EBAY-C-MARKETPLACE-ID": "EBAY_US"},
-                params={"q": query, "limit": limit, "sort": "newlyListed"},
-            )
-            resp.raise_for_status()
-            items = resp.json().get("itemSummaries", [])
-            return [
-                {
-                    "title": i.get("title", ""),
-                    "soldPrice": i.get("price", {}).get("value", "0.00"),
-                    "currency": i.get("price", {}).get("currency", "USD"),
-                    "soldDate": i.get("itemCreationDate", ""),
-                    "imageUrl": i.get("image", {}).get("imageUrl", ""),
-                    "itemUrl": i.get("itemWebUrl", ""),
-                }
-                for i in items[:limit]
-            ]
-
+        resp = await client.get(url)
         resp.raise_for_status()
-        data = resp.json()
 
-    items = data.get("itemSales", [])
+    root = ET.fromstring(resp.text)
+
+    def tag(name: str) -> str:
+        return f"{{{NS}}}{name}"
+
     results = []
-    for item in items[:limit]:
-        price_val = item.get("lastSoldPrice", item.get("price", {}))
-        results.append({
-            "title": item.get("title", ""),
-            "soldPrice": price_val.get("value", "0.00"),
-            "currency": price_val.get("currency", "USD"),
-            "soldDate": item.get("lastSoldDate", ""),
-            "imageUrl": item.get("image", {}).get("imageUrl", ""),
-            "itemUrl": item.get("itemWebUrl", ""),
-        })
-    return results
+    for item in root.iter(tag("searchResult")):
+        for listing in item.findall(tag("item")):
+            title_el    = listing.find(tag("title"))
+            url_el      = listing.find(tag("viewItemURL"))
+            img_el      = listing.find(tag("galleryURL"))
+            end_el      = listing.find(f".//{tag('endTime')}")
+            price_el    = listing.find(f".//{tag('currentPrice')}")
+
+            results.append({
+                "title":     title_el.text if title_el is not None else "",
+                "soldPrice": price_el.text if price_el is not None else "0.00",
+                "currency":  price_el.attrib.get("currencyId", "USD") if price_el is not None else "USD",
+                "soldDate":  end_el.text[:10] if end_el is not None else "",
+                "imageUrl":  img_el.text if img_el is not None else "",
+                "itemUrl":   url_el.text if url_el is not None else "",
+            })
+
+    return results[:limit]
