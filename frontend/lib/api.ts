@@ -28,12 +28,11 @@ export interface SearchResult {
   listings: Listing[];
   estimatedPrice: number | null;
   currency: string;
-  searchKeyword: string;
-  soldListings: SoldListing[];
 }
 
 export interface SoldResult {
   soldListings: SoldListing[];
+  searchKeyword: string;
 }
 
 export interface DescribeResult {
@@ -63,11 +62,13 @@ export async function searchByImage(imageFile: File): Promise<SearchResult> {
   return res.json();
 }
 
-export async function getSoldListings(query: string): Promise<SoldResult> {
-  const res = await fetch(
-    `${API_BASE}/api/sold?query=${encodeURIComponent(query)}`,
-    { credentials: "include", headers: NGROK_HEADERS }
-  );
+export async function getSoldByTitles(titles: string[]): Promise<SoldResult> {
+  const res = await fetch(`${API_BASE}/api/sold`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...NGROK_HEADERS },
+    body: JSON.stringify({ titles }),
+  });
   if (!res.ok) throw new Error((await res.json()).detail ?? "Sold lookup failed");
   return res.json();
 }
