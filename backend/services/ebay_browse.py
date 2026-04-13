@@ -6,24 +6,19 @@ import base64
 import os
 import httpx
 
-SANDBOX_BASE = "https://api.sandbox.ebay.com"
 PROD_BASE = "https://api.ebay.com"
 
 
-def _base_url() -> str:
-    return SANDBOX_BASE if os.getenv("EBAY_ENV", "sandbox") == "sandbox" else PROD_BASE
-
-
 async def get_app_token() -> str:
-    """Fetch an OAuth application token (client credentials grant)."""
-    base = _base_url()
-    app_id = os.getenv("EBAY_APP_ID", "")
-    cert_id = os.getenv("EBAY_CERT_ID", "")
+    """Fetch an OAuth application token (client credentials grant) using production credentials."""
+    # Browse API searchByImage is not supported in eBay sandbox — always use production
+    app_id = os.getenv("EBAY_PROD_APP_ID") or os.getenv("EBAY_APP_ID", "")
+    cert_id = os.getenv("EBAY_PROD_CERT_ID") or os.getenv("EBAY_CERT_ID", "")
     credentials = base64.b64encode(f"{app_id}:{cert_id}".encode()).decode()
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{base}/identity/v1/oauth2/token",
+            f"{PROD_BASE}/identity/v1/oauth2/token",
             headers={
                 "Authorization": f"Basic {credentials}",
                 "Content-Type": "application/x-www-form-urlencoded",
@@ -42,12 +37,11 @@ async def search_by_image(image_bytes: bytes, limit: int = 5) -> list[dict]:
     Call Browse API searchByImage and return simplified listing objects.
     """
     token = await get_app_token()
-    base = _base_url()
     image_b64 = base64.b64encode(image_bytes).decode()
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
-            f"{base}/buy/browse/v1/item_summary/search_by_image",
+            f"{PROD_BASE}/buy/browse/v1/item_summary/search_by_image",
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",

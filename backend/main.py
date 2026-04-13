@@ -4,7 +4,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from dotenv import load_dotenv
 import os
 
-from routers import search, ai, listing
+from routers import search, ai, listing, ebay_compliance
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ app.add_middleware(
 app.include_router(search.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(listing.router, prefix="/api")
+app.include_router(ebay_compliance.router, prefix="/api")
 
 
 @app.get("/health")

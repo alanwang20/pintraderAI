@@ -45,6 +45,7 @@ export interface ListingResult {
 
 export interface AuthStatus {
   authenticated: boolean;
+  username?: string;
 }
 
 export async function searchByImage(imageFile: File): Promise<SearchResult> {

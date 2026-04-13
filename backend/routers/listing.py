@@ -14,6 +14,8 @@ SANDBOX_OAUTH = "https://auth.sandbox.ebay.com/oauth2/authorize"
 PROD_OAUTH = "https://auth.ebay.com/oauth2/authorize"
 SANDBOX_TOKEN_URL = "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
 PROD_TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
+SANDBOX_IDENTITY_URL = "https://apiz.sandbox.ebay.com/commerce/identity/v1/user/"
+PROD_IDENTITY_URL = "https://apiz.ebay.com/commerce/identity/v1/user/"
 
 SELL_SCOPE = "https://api.ebay.com/oauth/api_scope/sell.inventory"
 
@@ -28,6 +30,9 @@ def _oauth_url() -> str:
 
 def _token_url() -> str:
     return SANDBOX_TOKEN_URL if _is_sandbox() else PROD_TOKEN_URL
+
+def _identity_url() -> str:
+    return SANDBOX_IDENTITY_URL if _is_sandbox() else PROD_IDENTITY_URL
 
 
 # ---------------------------------------------------------------------------
@@ -74,8 +79,21 @@ async def auth_callback(code: str, request: Request):
         resp.raise_for_status()
         token_data = resp.json()
 
-    request.session["ebay_token"] = token_data.get("access_token", "")
+    access_token = token_data.get("access_token", "")
+    request.session["ebay_token"] = access_token
     request.session["ebay_refresh_token"] = token_data.get("refresh_token", "")
+
+    # Fetch eBay username and store in session
+    try:
+        async with httpx.AsyncClient() as id_client:
+            id_resp = await id_client.get(
+                _identity_url(),
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            if id_resp.status_code == 200:
+                request.session["ebay_username"] = id_resp.json().get("username", "")
+    except Exception:
+        pass
 
     # Redirect back to frontend home page
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -86,7 +104,8 @@ async def auth_callback(code: str, request: Request):
 def auth_status(request: Request):
     """Return whether the user has a valid eBay token in session."""
     token = request.session.get("ebay_token", "")
-    return {"authenticated": bool(token)}
+    username = request.session.get("ebay_username", "")
+    return {"authenticated": bool(token), "username": username}
 
 
 @router.post("/auth/logout")
