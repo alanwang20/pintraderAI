@@ -12,11 +12,15 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [ebayUsername, setEbayUsername] = useState<string>("");
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
     getAuthStatus()
-      .then((s) => setIsAuthenticated(s.authenticated))
+      .then((s) => {
+        setIsAuthenticated(s.authenticated);
+        setEbayUsername(s.username ?? "");
+      })
       .finally(() => setAuthLoading(false));
   }, [searchParams]);
 
@@ -77,7 +81,9 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isAuthenticated ? "bg-emerald-400" : "bg-gray-300"}`} />
               <span className="text-sm text-gray-700">
-                {isAuthenticated ? "eBay connected" : "eBay not connected"}
+                {isAuthenticated
+                  ? ebayUsername ? `Connected: ${ebayUsername}` : "eBay connected"
+                  : "eBay not connected"}
               </span>
             </div>
             {isAuthenticated ? (
@@ -88,6 +94,7 @@ export default function HomePage() {
                     credentials: "include",
                   });
                   setIsAuthenticated(false);
+                  setEbayUsername("");
                 }}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors"
               >

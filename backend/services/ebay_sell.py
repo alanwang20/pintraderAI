@@ -52,6 +52,7 @@ def _build_add_item_xml(
     <ConditionID>{condition_id}</ConditionID>
     <Country>US</Country>
     <Currency>USD</Currency>
+    <Location>United States</Location>
     <ListingDuration>{duration}</ListingDuration>
     <ListingType>{listing_type}</ListingType>
     <Quantity>{quantity}</Quantity>
