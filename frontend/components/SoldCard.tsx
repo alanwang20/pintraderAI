@@ -24,7 +24,7 @@ export default function SoldCard({ item }: { item: SoldListing }) {
     >
       <div className="relative w-16 h-16 shrink-0 rounded-lg overflow-hidden bg-gray-100">
         {item.imageUrl ? (
-          <Image src={item.imageUrl} alt={item.title} fill className="object-cover" />
+          <Image src={item.imageUrl} alt={item.title} fill sizes="64px" className="object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-2xl">🏷️</div>
         )}

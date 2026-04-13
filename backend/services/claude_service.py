@@ -16,6 +16,31 @@ def _get_client() -> anthropic.AsyncAnthropic:
     return _client
 
 
+async def extract_search_keyword(listing_titles: list[str]) -> str:
+    """
+    Given a list of eBay listing titles for the same pin, return a concise
+    search keyword (3-6 words) that best identifies the specific pin for
+    searching sold/completed listings.
+    """
+    titles_text = "\n".join(f"- {t}" for t in listing_titles[:5])
+    prompt = (
+        "You are a trading pin expert. Given these eBay listing titles for the same pin, "
+        "extract the most specific 3-6 word search keyword that uniquely identifies this pin. "
+        "Focus on: character name, event/park, edition info, year. "
+        "Omit generic words like 'Disney', 'trading pin', 'LE', 'lot', 'new', 'rare'. "
+        "Output ONLY the keyword phrase, nothing else.\n\n"
+        f"Titles:\n{titles_text}"
+    )
+
+    client = _get_client()
+    message = await client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=32,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text.strip()
+
+
 async def generate_pin_description(
     image_bytes: bytes,
     listing_titles: list[str],

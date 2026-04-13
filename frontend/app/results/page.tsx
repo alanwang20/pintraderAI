@@ -16,6 +16,7 @@ interface PinResults {
   listings: Listing[];
   estimatedPrice: number | null;
   soldListings: SoldListing[];
+  searchKeyword?: string;
 }
 
 export default function ResultsPage() {
@@ -88,51 +89,66 @@ export default function ResultsPage() {
         <h1 className="font-bold text-lg">Pin Results</h1>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-5 space-y-6">
-        {/* Estimated price banner */}
-        {results.estimatedPrice !== null && (
-          <div className="bg-indigo-600 text-white rounded-2xl p-4 text-center">
-            <p className="text-xs uppercase tracking-widest opacity-80 mb-1">
-              Estimated Market Value
-            </p>
-            <p className="text-4xl font-bold">
-              ${results.estimatedPrice.toFixed(2)}
-            </p>
-            <p className="text-xs opacity-70 mt-1">
-              Median of {results.listings.length} similar active listings
-            </p>
-          </div>
-        )}
+      <div className="max-w-lg mx-auto px-4 pt-5 space-y-5">
 
-        {/* Active listings */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Similar Active Listings
-          </h2>
+        {/* ── ACTIVE LISTINGS ── */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-indigo-50">
+            <h2 className="text-sm font-bold text-indigo-800 uppercase tracking-wider">
+              Active Listings
+            </h2>
+            {results.estimatedPrice !== null && (
+              <span className="text-sm font-semibold text-indigo-700">
+                Median ${results.estimatedPrice.toFixed(2)}
+              </span>
+            )}
+          </div>
           {results.listings.length > 0 ? (
-            <div className="space-y-2">
+            <div className="divide-y divide-gray-50">
               {results.listings.map((item) => (
                 <ListingCard key={item.itemId} item={item} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No similar listings found.</p>
+            <p className="text-sm text-gray-400 px-4 py-5">No similar listings found.</p>
           )}
         </section>
 
-        {/* Sold listings */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Recently Sold
-          </h2>
+        {/* ── SOLD LISTINGS ── */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-emerald-50">
+            <div>
+              <h2 className="text-sm font-bold text-emerald-800 uppercase tracking-wider">
+                Recently Sold
+              </h2>
+              {results.searchKeyword && (
+                <p className="text-xs text-emerald-600 mt-0.5">
+                  Searched: &ldquo;{results.searchKeyword}&rdquo;
+                </p>
+              )}
+            </div>
+            {results.soldListings.length > 0 && (() => {
+              const prices = results.soldListings
+                .map(s => parseFloat(s.soldPrice))
+                .filter(n => !isNaN(n));
+              const avg = prices.length
+                ? (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2)
+                : null;
+              return avg ? (
+                <span className="text-sm font-semibold text-emerald-700">
+                  Avg ${avg}
+                </span>
+              ) : null;
+            })()}
+          </div>
           {results.soldListings.length > 0 ? (
-            <div className="space-y-2">
+            <div className="divide-y divide-gray-50">
               {results.soldListings.map((item, i) => (
                 <SoldCard key={i} item={item} />
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">No recent sales found.</p>
+            <p className="text-sm text-gray-400 px-4 py-5">No recent sales found.</p>
           )}
         </section>
 
