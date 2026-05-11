@@ -33,25 +33,45 @@ async def generate_pin_search_keyword(image_bytes: bytes) -> str:
     """
     image_b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
     media_type = _detect_media_type(image_bytes)
+
+    system_prompt = (
+        "You are an expert Olympic pin collector and eBay reseller. "
+        "Your job is to look at an Olympic trading pin image and produce the best possible eBay search query. "
+        "You know Olympic pin terminology, mascot names, NOC abbreviations, host cities, and sponsor series."
+    )
+
     prompt = (
-        "This is an Olympic trading pin. Generate a concise eBay search query (5-10 words) "
-        "that would find this exact pin on eBay.\n\n"
-        "Identify what type of pin it is and extract the most searchable details:\n"
-        "- SPORT PICTOGRAM: name the sport exactly as it appears (e.g. figure skating, alpine skiing, swimming)\n"
-        "- COUNTRY/NOC: include the country or NOC name (e.g. Team USA, Canada, Great Britain, France)\n"
-        "- MASCOT: include the mascot name if readable (e.g. Miga, Sumi, Wenlock, Miraitowa)\n"
-        "- LOGO/EMBLEM: describe the emblem (e.g. Olympic rings, torch, flame, wreath)\n"
-        "- DESIGN SHAPE: describe what the pin looks like physically (e.g. jacket, helmet, snowflake, flag, medal)\n"
-        "- GAMES: if a city, year, or 2-digit number is visible, include the full year (26=2026, 24=2024, 22=2022) and city if legible\n"
-        "- SPONSOR/BRAND: include sponsor name if prominently shown\n\n"
-        "Always include 'Olympic pin' in the query. Only include details clearly visible — do not guess.\n"
-        "Output ONLY the search query, nothing else."
+        "Analyze this Olympic trading pin image and output a single eBay search query of 5–10 words.\n\n"
+        "PRIORITY ORDER — include the highest-priority visible details first:\n"
+        "1. GAMES EDITION — city + full year if visible (e.g. 'Paris 2024', 'Milano Cortina 2026', 'Beijing 2022')\n"
+        "   - Decode 2-digit years: 26→2026, 24→2024, 22→2022, 20→2020, 18→2018, 16→2016\n"
+        "   - Note if Winter or Summer Olympics / Paralympics\n"
+        "2. COUNTRY / NOC — full name preferred over abbreviation (e.g. 'Team USA', 'Canada', 'Great Britain')\n"
+        "3. SUBJECT — choose the most specific applicable:\n"
+        "   - Athlete name (if legible on pin)\n"
+        "   - Sport pictogram (e.g. 'figure skating', 'alpine skiing', 'swimming')\n"
+        "   - Mascot name (e.g. 'Phryge', 'Miraitowa', 'Bing Dwen Dwen', 'Wenlock')\n"
+        "   - Sponsor/brand (e.g. 'Coca-Cola', 'McDonald's', 'Visa')\n"
+        "4. SHAPE / DESIGN — only if distinctive and searchable (e.g. 'helmet', 'snowflake', 'torch', 'flag shape')\n\n"
+        "RULES:\n"
+        "- Always end with 'Olympic pin' (or 'Paralympic pin' if applicable)\n"
+        "- Put the most specific/rare terms first — eBay weights early terms more heavily\n"
+        "- Omit any detail you cannot clearly see — partial guesses hurt search results\n"
+        "- If text is partially obscured, include only letters you can confidently read\n"
+        "- Do NOT include filler words like 'beautiful', 'rare', 'collectible'\n\n"
+        "EXAMPLES:\n"
+        "  Paris 2024 Team USA swimming Olympic pin\n"
+        "  Beijing 2022 Bing Dwen Dwen mascot Winter Olympic pin\n"
+        "  Atlanta 1996 Coca-Cola torch flame Olympic pin\n"
+        "  Milano Cortina 2026 alpine skiing helmet Olympic pin\n\n"
+        "Output ONLY the search query. No explanation, no punctuation at the end."
     )
 
     client = _get_client()
     message = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=40,
+        max_tokens=60,
+        system=system_prompt,
         messages=[
             {
                 "role": "user",
