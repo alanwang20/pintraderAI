@@ -2,7 +2,7 @@
 
 AI-powered price lookup and eBay listing tool for Olympic trading pins.
 
-PinTraderAI lets collectors photograph an Olympic trading pin, see what similar pins are actively listed and recently sold for on eBay, and post their own listing — all from a mobile-friendly web interface.
+PinTraderAI lets collectors photograph an Olympic trading pin, see what similar pins are actively listed and recently sold for on eBay, and post their own listing from a mobile-friendly web interface.
 
 ---
 
@@ -22,16 +22,16 @@ PinTraderAI solves this by:
 
 ## App Flow (4 pages)
 
-**Page 1 — Upload**
+**Page 1 : Upload**
 User photographs or uploads a pin image. The app calls eBay's Browse API `searchByImage` to find visually similar active listings.
 
-**Page 2 — Select Active Listings**
+**Page 2 : Select Active Listings**
 Active listings are displayed as selectable cards. The user taps to include or exclude results, removing unrelated pins (e.g. image search sometimes returns visually similar but unrelated items). Selected listing titles are passed to Claude.
 
-**Page 3 — Recently Sold**
+**Page 3 : Recently Sold**
 Claude generates a precise eBay search keyword from the selected listing titles (identifying sport, country/NOC, mascot, games year, design shape). That keyword is used to find recently completed/sold listings via the eBay Finding API. The user selects which sold results are relevant.
 
-**Page 4 — Results + Post**
+**Page 4 : Results + Post**
 The top of the page shows the selected active and sold listings as a price reference grid (with median active price and average sold price). Below, a Claude-generated listing description is pre-filled into an eBay posting form. The user can edit and post directly to eBay via OAuth.
 
 ---
@@ -47,11 +47,11 @@ The top of the page shows the selected active and sold listings as a price refer
 - Async/await throughout, parallel API calls via `asyncio.gather`
 
 ### External Services
-- **eBay Browse API** — `searchByImage` for active listing image search
-- **eBay Finding API** — `findCompletedItems` for sold/completed listings
-- **eBay Sell/Trading API** — post listings on behalf of authenticated users
-- **eBay OAuth 2.0** — user authentication for listing creation
-- **Anthropic Claude** — keyword generation (Haiku) and listing description generation (Sonnet)
+- **eBay Browse API** : `searchByImage` for active listing image search
+- **eBay Finding API** : `findCompletedItems` for sold/completed listings
+- **eBay Sell/Trading API** : post listings on behalf of authenticated users
+- **eBay OAuth 2.0** : user authentication for listing creation
+- **Anthropic Claude** : keyword generation (Haiku) and listing description generation (Sonnet)
 
 ---
 
@@ -76,7 +76,7 @@ FastAPI Backend
 ## Known Limitations
 
 **Sold listing data requires eBay approval**
-The eBay Finding API (`findCompletedItems`) is blocked for newer production keysets. The proper replacement — the Marketplace Insights API (`buy.marketplace.insights`) — requires manual approval from eBay. Until approved, the sold listings page cannot return real completed sales data. eBay's approval process requires the app to be live with real usage before they will review the request.
+The eBay Finding API (`findCompletedItems`) is blocked for newer production keysets. The proper replacement, the Marketplace Insights API (`buy.marketplace.insights`), requires manual approval from eBay. Until approved, the sold listings page cannot return real completed sales data. eBay's approval process requires the app to be live with real usage before they will review the request.
 
 **Image search can return unrelated pins**
 eBay's `searchByImage` is not pin-specific and will sometimes return visually similar but unrelated items (e.g. a Starbucks bear pin mixed in with Olympic jacket pins). The manual selection step on page 2 exists specifically to let users filter these out before the keyword is generated.
@@ -131,7 +131,7 @@ EBAY_VERIFICATION_TOKEN=
 
 ## Roadmap
 
-### Current — MVP
+### Current : MVP
 - 4-page image → select → sold → post flow
 - eBay OAuth and listing creation
 - Claude keyword generation and description generation
