@@ -1,165 +1,152 @@
 # PinTraderAI
 
-AI-powered trading pin price lookup using image search and the eBay API.
+AI-powered price lookup and eBay listing tool for Olympic trading pins.
 
-PinTraderAI allows collectors to take a photo of a trading pin and quickly estimate its current market value by searching for similar listings on eBay.
-
-The goal is to make **real-time pin trading easier by providing instant price insight.**
+PinTraderAI lets collectors photograph an Olympic trading pin, see what similar pins are actively listed and recently sold for on eBay, and post their own listing — all from a mobile-friendly web interface.
 
 ---
 
 ## Overview
 
-Trading pins can vary significantly in value depending on rarity, edition size, event exclusivity, and market demand. Currently, collectors often have to manually search online marketplaces to estimate value.
+Olympic trading pins vary significantly in value depending on sport, country/NOC, edition, year, and event exclusivity. Manually searching eBay for accurate comps takes several minutes and requires knowing the right search terms.
 
-PinTraderAI simplifies this process by:
+PinTraderAI solves this by:
 
-1. Uploading a photo of a pin
-2. Searching eBay for visually similar listings
-3. Aggregating prices from those listings
-4. Returning an estimated market value
-
-This reduces the typical **2–3 minute manual search process to a few seconds.**
-
----
-
-## Features (MVP)
-
-- Image upload for trading pins
-- Image-based search using eBay API
-- Retrieval of similar listings
-- Estimated price range from active listings
-- Display of top matching items
+1. Using eBay's image search to find visually similar active listings instantly
+2. Letting the user curate which results actually match their pin
+3. Using Claude AI to generate a precise keyword from the selected listings
+4. Searching for recently completed/sold listings using that keyword
+5. Letting the user review and post their own listing directly to eBay
 
 ---
 
-## Example Workflow
+## App Flow (4 pages)
 
-1. User uploads a photo of a trading pin
-2. Application sends image to the eBay image search API
-3. eBay returns similar listings
-4. The system calculates a price estimate
-5. Results are displayed to the user
+**Page 1 — Upload**
+User photographs or uploads a pin image. The app calls eBay's Browse API `searchByImage` to find visually similar active listings.
+
+**Page 2 — Select Active Listings**
+Active listings are displayed as selectable cards. The user taps to include or exclude results, removing unrelated pins (e.g. image search sometimes returns visually similar but unrelated items). Selected listing titles are passed to Claude.
+
+**Page 3 — Recently Sold**
+Claude generates a precise eBay search keyword from the selected listing titles (identifying sport, country/NOC, mascot, games year, design shape). That keyword is used to find recently completed/sold listings via the eBay Finding API. The user selects which sold results are relevant.
+
+**Page 4 — Results + Post**
+The top of the page shows the selected active and sold listings as a price reference grid (with median active price and average sold price). Below, a Claude-generated listing description is pre-filled into an eBay posting form. The user can edit and post directly to eBay via OAuth.
 
 ---
 
 ## Tech Stack
 
 ### Frontend
-- React / Next.js
-- Image upload interface
-- Result display UI
+- Next.js (App Router) + TypeScript + Tailwind CSS
+- Mobile-first, designed for use on a phone
 
 ### Backend
-- Python FastAPI or Node.js
-- Image processing
-- eBay API integration
+- Python + FastAPI
+- Async/await throughout, parallel API calls via `asyncio.gather`
 
 ### External Services
-- eBay Browse API
+- **eBay Browse API** — `searchByImage` for active listing image search
+- **eBay Finding API** — `findCompletedItems` for sold/completed listings
+- **eBay Sell/Trading API** — post listings on behalf of authenticated users
+- **eBay OAuth 2.0** — user authentication for listing creation
+- **Anthropic Claude** — keyword generation (Haiku) and listing description generation (Sonnet)
 
 ---
 
 ## Architecture
 
 ```
-User
+User (mobile browser)
   ↓
-Upload Pin Photo
+Next.js Frontend
   ↓
-Frontend (React)
-  ↓
-Backend API
-  ↓
-Image → Base64 Conversion
-  ↓
-eBay Image Search API
-  ↓
-Matching Listings Returned
-  ↓
-Price Aggregation Algorithm
-  ↓
-Estimated Price Displayed
+FastAPI Backend
+  ├── POST /api/search      → eBay Browse API searchByImage (active listings)
+  ├── POST /api/sold        → Claude keyword extraction → eBay Finding API findCompletedItems
+  ├── POST /api/describe    → Claude Sonnet vision (generate listing description)
+  ├── GET  /api/auth/ebay   → eBay OAuth redirect
+  ├── GET  /api/auth/callback → Exchange code for user token
+  └── POST /api/list        → eBay Trading API AddItem
 ```
 
 ---
 
-## Installation (Future)
+## Known Limitations
 
-Clone the repository:
+**Sold listing data requires eBay approval**
+The eBay Finding API (`findCompletedItems`) is blocked for newer production keysets. The proper replacement — the Marketplace Insights API (`buy.marketplace.insights`) — requires manual approval from eBay. Until approved, the sold listings page cannot return real completed sales data. eBay's approval process requires the app to be live with real usage before they will review the request.
+
+**Image search can return unrelated pins**
+eBay's `searchByImage` is not pin-specific and will sometimes return visually similar but unrelated items (e.g. a Starbucks bear pin mixed in with Olympic jacket pins). The manual selection step on page 2 exists specifically to let users filter these out before the keyword is generated.
+
+---
+
+## Local Development
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- ngrok (required for eBay OAuth HTTPS callback)
+
+### Setup
 
 ```
-git clone https://github.com/yourusername/pintraderai.git
-cd pintraderai
-```
+# Backend
+cd backend
+pip install -r requirements.txt
+cp .env.example .env   # fill in API keys
+uvicorn main:app --reload
 
-Install dependencies:
-
-```
+# Frontend
+cd frontend
 npm install
-```
-
-Run development server:
-
-```
 npm run dev
+
+# ngrok (separate terminal)
+ngrok http 8000
 ```
 
----
+Or use the included launch script to open all three in separate windows:
 
-## API Integration
+```
+.\start.ps1
+```
 
-PinTraderAI uses the **eBay Browse API** to retrieve matching listings.
+### Environment Variables
 
-Key API capability used:
-
-- Image-based item search
-- Listing metadata retrieval
-- Price aggregation
+```
+EBAY_PROD_APP_ID=
+EBAY_PROD_CERT_ID=
+EBAY_DEV_ID=
+EBAY_REDIRECT_URI=        # RuName from eBay developer dashboard
+ANTHROPIC_API_KEY=
+SESSION_SECRET=
+EBAY_DELETION_ENDPOINT_URL=
+EBAY_VERIFICATION_TOKEN=
+```
 
 ---
 
 ## Roadmap
 
-### Phase 1 — MVP
-- Image upload
-- eBay image search
-- Price estimation
+### Current — MVP
+- 4-page image → select → sold → post flow
+- eBay OAuth and listing creation
+- Claude keyword generation and description generation
 
-### Phase 2 — Improved Matching
-- Keyword extraction from listings
-- Better similarity filtering
-- Confidence scoring
+### Pending eBay Approval
+- Real sold/completed listing data via Marketplace Insights API
 
-### Phase 3 — Advanced Features
-- Sold listing analysis
-- Historical price tracking
-- Collection management
-- Mobile app
-
----
-
-## Risks
-
-- Visually similar pins may have different values
-- Some pins may not have current listings
-- API rate limits may require caching
-
----
-
-## Future Vision
-
-PinTraderAI could expand into a full **AI-powered pin trading platform**, including:
-
-- Real-time trade evaluation
-- Marketplace aggregation
-- Pin rarity detection
-- Personal collection tracking
+### Future
+- Sold price history chart
+- Collection tracking
+- Batch listing mode
+- Pin rarity scoring
 
 ---
 
 ## Author
 
 Alan Wang
-
----
